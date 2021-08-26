@@ -1,0 +1,16 @@
+
+
+#!/bin/bash
+
+# 修改系统语言
+#1 dpkg-reconfigure locales
+#2 /etc/locale.gen 改动生效 locale-gen
+
+#systemctl
+# systemctl enable nftables 自动启动
+# systemctl disable nftables 不自动启动
+# systemctl statuc nftables 查看服务
+# systemctl start nftables 启动
+# systemctl stop nftables 关闭
+# systemctl restart nftables 重启
+

@@ -1,0 +1,118 @@
+
+
+#!/bin/bash
+
+find_file="/etc/network/interfaces"
+
+find_str="nftables"
+
+if [ `grep -c "$find_str" $find_file` -ne '0' ];then
+echo "ok"
+else
+	echo "up /home/y/y-bash-script/nftables.fw" >> /etc/network/interfaces
+fi
+# 表table，链chain，规则rule。
+
+#  表操作
+# 建表
+# nft add table family_type table_name
+# nft add table inet yanlf
+# 查看
+# nft list ruleset
+# nft list tables
+# 删除
+# nft delete table family_type table_name
+
+# 规则发到/etc/nftables.conf
+# nft list ruleset > /etc/nftable.conf
+#启动
+# systemctl enable nftables.service
+#关闭
+# nft flush ruleset
+
+# 链操作
+# 创建链
+# nft add chain family_type table_name chain_name  \
+# nft add chain inet        my_table   my_tcp_chain
+# '{type chain_type hook hook_type priority priority_value; policy policy_type;}'
+# type: filter, route, nat.
+# hook: prerouting, input, forward, output, postrouting, ingress.
+# policy: 缺省为接受。
+
+# 规则操作
+# nft add rule family_type table_name chain_name handle handle_value statement
+# nft add rule inet        my_table   my_input   ct     state related, established accept
+
+# 清空防火墙
+nft flush ruleset
+
+# 建表
+nft add table inet my_table
+
+# 输入输出转发基本链。只有输出接受
+nft add chain inet my_table my_input '{ type filter hook input priority 0 ; policy drop ; }'
+
+nft add chain inet my_table my_forward '{ type filter hook forward priority 0 ; policy drop ; }'
+
+nft add chain inet my_table my_output '{ type filter hook output priority 0 ; policy accept ; }'
+
+# 常规TCP和UDP链
+nft add chain inet my_table my_tcp_chain
+nft add chain inet my_table my_udp_chain
+
+# 接受已经建立的流量
+nft add rule inet my_table my_input ct state related,established accept
+
+# 接受所有回环接口流量
+nft add rule inet my_table my_input iif lo accept
+
+# 丢弃无效流量	   
+nft add rule inet my_table my_input ct state invalid drop
+
+#接受icmp和igmp	   
+nft add rule inet my_table my_input meta l4proto ipv6-icmp icmpv6 type '{ destination-unreachable, packet-too-big, time-exceeded, parameter-problem, mld-listener-query, mld-listener-report, mld-listener-reduction, nd-router-solicit, nd-router-advert, nd-neighbor-solicit, nd-neighbor-advert, ind-neighbor-solicit, ind-neighbor-advert, mld2-listener-report }' accept
+
+nft add rule inet my_table my_input meta l4proto icmp icmp type '{ destination-unreachable, router-solicitation, router-advertisement, time-exceeded, parameter-problem }' accept
+
+nft add rule inet my_table my_input ip protocol igmp accept
+
+nft add rule inet my_table my_input meta l4proto udp ct state new jump my_udp_chain
+
+nft add rule inet my_table my_input 'meta l4proto tcp tcp flags & (fin|syn|rst|ack) == syn ct state new jump my_tcp_chain'
+
+
+nft add rule inet my_table my_input meta l4proto udp reject
+
+nft add rule inet my_table my_input meta l4proto tcp reject with tcp reset
+
+nft add rule inet my_table my_input counter reject with icmpx type port-unreachable
+
+#nft add rule inet my_table my_tcp_chain tcp dport 80 accept
+
+#nft add rule inet my_table my_tcp_chain tcp dport 4662 accept
+
+#nft add rule inet my_table my_tcp_chain tcp dport 9009 accept
+
+#nft add rule inet my_table my_tcp_chain tcp dport 4665 accept
+
+#nft add rule inet my_table my_tcp_chain tcp dport 443 accept
+
+#nft add rule inet my_table my_tcp_chain tcp dport 22 accept
+
+#nft add rule inet my_table my_tcp_chain tcp dport 53 accept
+
+#nft add rule inet my_table my_udp_chain udp dport 53 accept
+
+#nft add rule inet my_table my_udp_chain udp dport 4672 accept
+
+
+# nft add rule inet filter input log
+
+
+
+# 规则进防火墙文档
+nft list ruleset > /etc/nftable.conf
+# 启动防火墙
+systemctl enable nftables.service
+# 关闭防火墙
+# nft flush ruleset
